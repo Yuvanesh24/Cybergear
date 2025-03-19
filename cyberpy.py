@@ -3,11 +3,13 @@ import time
 import struct
 import serial.tools.list_ports
 
-
+# Print available COM ports
 print("Available COM ports:", [port.device for port in serial.tools.list_ports.comports()])
 
+# Initialize serial connection
 ser = serial.Serial('COM4', 921600, timeout=5.0)  
 
+# Frame headers and tails for CAN messages
 frame_head = "4154"
 frame_tail = "0d0a"
 
@@ -16,7 +18,6 @@ def read_response():
     time.sleep(0.5)  
     if ser.in_waiting > 0:
         data = ser.read(ser.in_waiting)  
-        print(data)
         print("Motor Response:", data.hex())
     else:
         print("No response received.")
@@ -59,9 +60,10 @@ class Cybergear:
         bin_num = (bin_num << 3) | 0b100
         hex_str = format(bin_num, "08x")
 
+        # Convert float values to uint16
         tx_data = [
-            float_to_uint(mech_position, -4 * 3.1416, 4 * 3.1416, 16) >> 8,
-            float_to_uint(mech_position, -4 * 3.1416, 4 * 3.1416, 16) & 0xFF,
+            float_to_uint(mech_position, -12.5, 12.5, 16) >> 8,
+            float_to_uint(mech_position, -12.5, 12.5, 16) & 0xFF,
             float_to_uint(speed, -30.0, 30.0, 16) >> 8,
             float_to_uint(speed, -30.0, 30.0, 16) & 0xFF,
             float_to_uint(kp, 0.0, 500.0, 16) >> 8,
@@ -89,13 +91,20 @@ class Cybergear:
         ser.flush()
         read_response()
 
-motor_1 = Cybergear(253, 127)  
+# Initialize motor with master CAN ID and motor CAN ID
+motor_1 = Cybergear(0x00, 0x7F)  # Master CAN ID: 0x00, Motor CAN ID: 0x7F
 
+# Power on the motor
 motor_1.power_on()
-time.sleep(2)
+time.sleep(1)
+
+# Enable the motor
 motor_1.enable_motor()
-time.sleep(2)
-motor_1.control_motor(torque= 5.0, mech_position=1.5, speed=5.0, kp=30.0, kd=0.5)  
-# motor_1.control_motor(torque= 0.0, mech_position=0.0, speed=0.0, kp=0.0, kd=0.0)  
+time.sleep(1)
+
+# Control the motor with desired position, speed, torque, kp, and kd
+motor_1.control_motor(torque=0.5, mech_position=0.0, speed=0.2, kp=5.0, kd=0.5)
 time.sleep(5)
+
+# Stop the motor
 motor_1.stop_motor()
